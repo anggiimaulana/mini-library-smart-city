@@ -5,12 +5,17 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\ReferenceController;
 use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\QuizController;
 use Illuminate\Support\Facades\Route;
 
 // Landing pages
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register.show');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login.show');
+
+// UBAH: Hapus middleware dari route page, pindahkan ke API
+Route::get('/quiz', [QuizController::class, 'showQuiz'])->name('quiz');
+Route::get('/indramayu-example', [ContentController::class, 'showIndramayuExample'])->name('indramayu.example');
 
 // API Routes for AJAX
 Route::prefix('api')->group(function () {
@@ -38,9 +43,12 @@ Route::prefix('api')->group(function () {
         Route::get('/progress', [ProgressController::class, 'getUserProgress'])->name('api.progress.get');
         Route::post('/progress/toggle', [ProgressController::class, 'toggleProgress'])->name('api.progress.toggle');
 
-        // Certificate endpointa
+        // Certificate endpoints
         Route::get('/certificate', [ProgressController::class, 'getCertificateData'])->name('api.certificate');
-        // Route::post('/certificate', [ProgressController::class, 'getCertificateData'])->name('api.certificate');
+
+        // TAMBAH: API endpoints untuk quiz dengan middleware
+        Route::get('/quiz/data', [QuizController::class, 'getQuizData'])->name('api.quiz.data');
+        Route::post('/quiz/submit', [QuizController::class, 'submitQuiz'])->name('api.quiz.submit');
     });
 });
 

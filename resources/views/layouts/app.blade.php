@@ -121,6 +121,9 @@
                     <a href="#" class="nav-link" data-page="references">
                         <i class="fas fa-book mr-2"></i>References
                     </a>
+                    <a href="#" class="nav-link-mobile" data-page="quiz">
+                        <i class="fas fa-question-circle mr-2"></i>Quiz
+                    </a>
                     <div id="navUserSection" class="flex items-center space-x-4">
                         <!-- User info will be injected here -->
                     </div>
@@ -147,12 +150,195 @@
                 <a href="#" class="nav-link-mobile" data-page="references">
                     <i class="fas fa-book mr-2"></i>References
                 </a>
+                <!-- FIX: Perbaiki link quiz di mobile -->
+                <a href="#" class="nav-link-mobile" data-page="quiz">
+                    <i class="fas fa-question-circle mr-2"></i>Quiz
+                </a>
                 <div id="navUserSectionMobile">
                     <!-- Mobile user info will be injected here -->
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- GANTI bagian Journey Progress dengan yang lebih responsive -->
+    <div id="journeyProgress" class="bg-white shadow-sm border-b hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+            <div class="relative">
+                <!-- Journey Steps - Responsive -->
+                <div class="flex justify-between items-center overflow-x-auto pb-2">
+                    <!-- Step 1: Register/Login -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="auth">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-auth">
+                            1
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Signup/<br>Signin</span>
+                    </div>
+
+                    <!-- Step 2: Smart City Overview -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="overview">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-overview">
+                            2
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Smart<br>City?</span>
+                    </div>
+
+                    <!-- Step 3: 6 Pillars -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="pillars">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-pillars">
+                            3
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">6 Pillar<br>Smart CityC</span>
+                    </div>
+
+                    <!-- Step 4: Indramayu Example -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="example">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-example">
+                            4
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Contoh<br>IDY</span>
+                    </div>
+
+                    <!-- Step 5: All References -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="references">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-references">
+                            5
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Semua<br>Ref</span>
+                    </div>
+
+                    <!-- Step 6: Quiz -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="quiz">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-quiz">
+                            6
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Kuis<br>SC</span>
+                    </div>
+
+                    <!-- Step 7: Certificate -->
+                    <div class="journey-step flex flex-col items-center min-w-0 flex-shrink-0" data-step="certificate">
+                        <div class="w-8 md:w-10 h-8 md:h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold mb-1 md:mb-2 transition-colors text-xs md:text-sm"
+                            id="step-certificate">
+                            7
+                        </div>
+                        <span class="text-xs text-gray-600 text-center leading-tight">Klaim<br>Sertifikat</span>
+                    </div>
+                </div>
+
+                <!-- Progress Line -->
+                <div class="absolute top-4 md:top-5 left-0 w-full h-0.5 bg-gray-200 -z-10">
+                    <div id="journeyProgressLine" class="h-full bg-gradient-primary transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Journey Description -->
+            <div class="text-center mt-4">
+                <p id="journeyDescription" class="text-sm text-gray-600">
+                    Selesaikan perjalanan pembelajaran Smart City Anda langkah demi langkah
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* TAMBAH: Journey responsive styles */
+        .journey-step {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 50px;
+            /* Minimum width untuk mobile */
+        }
+
+        .journey-step:hover {
+            transform: translateY(-2px);
+        }
+
+        .journey-step.active .w-8,
+        .journey-step.active .md\\:w-10 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scale(1.1);
+        }
+
+        .journey-step.completed .w-8,
+        .journey-step.completed .md\\:w-10 {
+            background: #10b981;
+        }
+
+        .journey-step.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .journey-step.locked:hover {
+            transform: none;
+        }
+
+        /* Mobile navigation improvements */
+        @media (max-width: 768px) {
+            .journey-step {
+                margin: 0 2px;
+            }
+
+            #journeyProgress {
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+        }
+    </style>
 
     <!-- Main Content -->
     <main id="mainContent" class="min-h-screen">
@@ -178,6 +364,9 @@
                             class="block text-gray-300 hover:text-white transition-colors">Home</a>
                         <a href="#" data-page="references"
                             class="block text-gray-300 hover:text-white transition-colors">References</a>
+                        <a href="#" class="nav-link" data-page="quiz">
+                            <i class="fas fa-question-circle mr-2"></i>Quiz
+                        </a>
                         <a href="https://polindra.ac.id" target="_blank"
                             class="block text-gray-300 hover:text-white transition-colors">Politeknik Negeri
                             Indramayu</a>
@@ -254,24 +443,43 @@
         const API_BASE_URL = '{{ url('/api') }}';
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // Navigation styles
+        // FIX: Mobile Navigation
         document.addEventListener('DOMContentLoaded', function() {
-            // Add navigation styles
+            // Mobile menu toggle fix
+            const navToggle = document.getElementById('navToggle');
+            const navMenu = document.getElementById('navMenu');
+
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navMenu.classList.toggle('hidden');
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!navToggle.contains(e.target) && !navMenu.contains(e.target)) {
+                        navMenu.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Navigation styles
             const style = document.createElement('style');
             style.textContent = `
-                .nav-link {
-                    @apply flex items-center px-4 py-2 text-gray-600 hover:text-primary-600 font-medium transition-colors rounded-lg hover:bg-gray-100;
-                }
-                .nav-link.active {
-                    @apply text-primary-600 bg-primary-50;
-                }
-                .nav-link-mobile {
-                    @apply block px-3 py-2 text-gray-600 hover:text-primary-600 font-medium transition-colors rounded-md hover:bg-gray-100;
-                }
-                .nav-link-mobile.active {
-                    @apply text-primary-600 bg-primary-50;
-                }
-            `;
+            .nav-link {
+                @apply flex items-center px-4 py-2 text-gray-600 hover:text-primary-600 font-medium transition-colors rounded-lg hover:bg-gray-100;
+            }
+            .nav-link.active {
+                @apply text-primary-600 bg-primary-50;
+            }
+            .nav-link-mobile {
+                @apply block px-3 py-2 text-gray-600 hover:text-primary-600 font-medium transition-colors rounded-md hover:bg-gray-100;
+            }
+            .nav-link-mobile.active {
+                @apply text-primary-600 bg-primary-50;
+            }
+        `;
             document.head.appendChild(style);
         });
     </script>

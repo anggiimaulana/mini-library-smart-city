@@ -67,4 +67,13 @@ class ContentController extends Controller
             'content' => $content
         ]);
     }
+
+    // UBAH: Hapus auth check, biarkan JavaScript handle
+    public function showIndramayuExample()
+    {
+        return view('pages.indramayu-example', [
+            'title' => 'Contoh Implementasi Smart City Indramayu - Mini Library',
+            'slug' => 'indramayu-example'
+        ]);
+    }
 }

@@ -103,13 +103,17 @@
                     Register now and start exploring the concept of Indonesia’s Smart City
                 </p>
                 <div id="ctaButtons" class="space-x-4">
-                    <button onclick="app.navigateToPage('register')"
+                    <button onclick="app.navigateToPage('references')"
                         class="bg-white text-primary-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors transform hover:scale-105">
-                        <i class="fas fa-user-plus mr-2"></i>Register Now
+                        <i class="fas fa-book mr-2"></i>See All References
                     </button>
-                    <button onclick="app.navigateToPage('login')"
+                    <button onclick="app.navigateToPage('quiz')"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition-colors transform hover:scale-105">
+                        <i class="fas fa-question-circle mr-2"></i>Take Quiz
+                    </button>
+                    <button onclick="app.logout()"
                         class="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white hover:text-primary-600 transition-colors">
-                        <i class="fas fa-sign-in-alt mr-2"></i>Already Have an Account?
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </button>
                 </div>
             </div>

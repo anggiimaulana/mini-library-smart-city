@@ -12,21 +12,32 @@ class ProgressController extends Controller
     public function getUserProgress(Request $request)
     {
         try {
-            $visitor = auth('visitor')->user(); // 👈 pakai guard visitor
+            $visitor = auth('visitor')->user();
 
             $totalResources = Resources::count();
-
-            $completedCount = VisitorProgress::where('visitor_id', $visitor->id)
+            $completedResourcesCount = VisitorProgress::where('visitor_id', $visitor->id)
                 ->where('is_completed', true)
                 ->count();
 
-            $percentage = $totalResources > 0
-                ? round(($completedCount / $totalResources) * 100)
+            // TAMBAH: Quiz completion status
+            $quizCompleted = ($visitor->quiz_score ?? 0) >= 70 ? 1 : 0;
+
+            // TOTAL items = resources + quiz
+            $totalItems = $totalResources + 1;
+            $completedItems = $completedResourcesCount + $quizCompleted;
+
+            $percentage = $totalItems > 0
+                ? round(($completedItems / $totalItems) * 100)
                 : 0;
 
             return response()->json([
                 'total_references' => $totalResources,
-                'completed_count' => $completedCount,
+                'completed_count' => $completedResourcesCount,
+                'quiz_completed' => $quizCompleted,
+                'quiz_score' => $visitor->quiz_score ?? 0,
+                'quiz_attempts' => $visitor->quiz_attempts ?? 0, // TAMBAH
+                'total_items' => $totalItems,
+                'completed_items' => $completedItems,
                 'percentage' => $percentage,
                 'is_complete' => $percentage === 100
             ]);
@@ -37,7 +48,6 @@ class ProgressController extends Controller
             ], 500);
         }
     }
-
 
     public function toggleProgress(Request $request)
     {
@@ -54,7 +64,7 @@ class ProgressController extends Controller
         }
 
         try {
-            $visitor = auth('visitor')->user(); 
+            $visitor = auth('visitor')->user();
 
             $resourceId = $request->resource_id;
             $isCompleted = $request->is_completed;
@@ -98,17 +108,32 @@ class ProgressController extends Controller
     public function getCertificateData(Request $request)
     {
         try {
-            $visitor = auth('visitor')->user(); // 👈 pakai guard visitor
+            $visitor = auth('visitor')->user();
 
             $totalResources = Resources::count();
             $completedCount = VisitorProgress::where('visitor_id', $visitor->id)
                 ->where('is_completed', true)
                 ->count();
 
-            if ($completedCount < $totalResources) {
+            // Check if quiz is completed (score >= 70)
+            $quizCompleted = ($visitor->quiz_score ?? 0) >= 70;
+
+            // Total items = resources + quiz
+            $totalItems = $totalResources + 1;
+            $completedItems = $completedCount + ($quizCompleted ? 1 : 0);
+
+            if ($completedItems < $totalItems) {
+                $missing = [];
+                if ($completedCount < $totalResources) {
+                    $missing[] = ($totalResources - $completedCount) . ' references';
+                }
+                if (!$quizCompleted) {
+                    $missing[] = 'quiz (minimum score 70%)';
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Please complete all references before requesting a certificate'
+                    'message' => 'Please complete: ' . implode(' and ', $missing)
                 ], 400);
             }
 
@@ -121,6 +146,9 @@ class ProgressController extends Controller
                     'study_program' => $visitor->studyProgram?->name,
                     'completion_date' => now()->format('Y-m-d'),
                     'total_resources' => $totalResources,
+                    'quiz_score' => round($visitor->quiz_score),
+                    'total_items' => $totalItems,
+                    'completed_items' => $completedItems,
                 ]
             ]);
         } catch (\Exception $e) {
@@ -131,17 +159,23 @@ class ProgressController extends Controller
         }
     }
 
-
     private function updateVisitorProgress($visitorId)
     {
         $totalResources = Resources::count();
+        $visitor = \App\Models\Visitor::find($visitorId);
+
         $completedCount = VisitorProgress::where('visitor_id', $visitorId)
             ->where('is_completed', true)
             ->count();
 
-        $percentage = $totalResources > 0 ? round(($completedCount / $totalResources) * 100) : 0;
+        // Add quiz completion (if score >= 70)
+        $quizCompleted = ($visitor->quiz_score ?? 0) >= 70 ? 1 : 0;
 
-        \App\Models\Visitor::where('id', $visitorId)
-            ->update(['progress' => $percentage]);
+        $totalItems = $totalResources + 1; // +1 for quiz
+        $completedItems = $completedCount + $quizCompleted;
+
+        $percentage = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
+
+        $visitor->update(['progress' => $percentage]);
     }
 }

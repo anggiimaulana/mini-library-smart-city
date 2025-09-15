@@ -15,6 +15,7 @@ class SmartCityApp {
         await this.checkAuthStatus();
         await this.loadInitialPage();
         await this.loadDropdownData();
+        this.initializeJourney(); // TAMBAH INI
     }
 
     setupEventListeners() {
@@ -99,6 +100,521 @@ class SmartCityApp {
         return false;
     }
 
+    // ===== QUIZ METHODS =====
+    async renderQuizPage() {
+    const quizLoadingEl = document.getElementById('quizLoading');
+    const quizInfoEl = document.getElementById('quizInfo');
+    const quizFormEl = document.getElementById('quizForm');
+
+    try {
+        // pastikan loading tampil dulu (opsional)
+        quizLoadingEl?.classList.remove('hidden');
+        quizInfoEl?.classList.add('hidden');
+        quizFormEl?.classList.add('hidden');
+
+        const quizData = await this.apiCall('/quiz/data');
+
+        // Sembunyikan loading ketika data siap
+        quizLoadingEl?.classList.add('hidden');
+
+        // Update quiz info
+        document.getElementById('totalQuestions').textContent = quizData.total_questions;
+        document.getElementById('userAttempts').textContent = quizData.user_attempts;
+        document.getElementById('userScore').textContent = Math.round(quizData.user_score) + '%';
+
+        // Tampilkan info & form
+        quizInfoEl?.classList.remove('hidden');
+        this.renderQuizQuestions(quizData.questions);
+        quizFormEl?.classList.remove('hidden');
+
+    } catch (error) {
+        // Pastikan loading tetap disembunyikan jika error
+        quizLoadingEl?.classList.add('hidden');
+
+        this.showToast('Failed to load quiz', 'error');
+        console.error('Quiz load error:', error);
+    }
+}
+
+
+    renderQuizQuestions(questions) {
+        const container = document.getElementById('questionsContainer');
+        
+        container.innerHTML = questions.map((question, index) => `
+            <div class="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-primary-500">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">
+                        Question ${question.id}
+                    </h3>
+                    <p class="text-gray-700">${question.question}</p>
+                </div>
+                
+                <div class="space-y-3">
+                    ${Object.entries(question.options).map(([key, value]) => `
+                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="radio" name="answers[${question.id}]" value="${key}" 
+                                class="mr-3 text-primary-500 focus:ring-primary-500" required>
+                            <span class="font-medium text-gray-700 mr-2">${key}.</span>
+                            <span class="text-gray-700">${value}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+   async handleQuizSubmit(formObj) {
+        const submitBtn = document.querySelector('#quizAnswerForm button[type="submit"]');
+        submitBtn?.setAttribute('disabled', 'disabled');
+        submitBtn?.classList.add('opacity-60', 'cursor-not-allowed');
+
+        try {
+            const answers = {};
+            for (let key in formObj) {
+                const match = key.match(/answers\[(\d+)\]/);
+                if (match) answers[match[1]] = formObj[key];
+            }
+
+            console.log("Answers to send:", answers);
+
+            const response = await this.apiCall('/quiz/submit', 'POST', { answers });
+            this.showQuizResults(response);
+
+            // Update Quiz Info
+            document.getElementById('userAttempts').textContent = response.attempts ?? 0;
+            document.getElementById('userScore').textContent = Math.round(response.score) + '%';
+
+
+            this.showQuizResults(response);
+
+        } catch (error) {
+            console.error("Submit quiz error:", error);
+            if (error.errors) {
+                this.showToast('Please answer all questions', 'warning');
+            } else {
+                this.showToast('Failed to submit quiz', 'error');
+            }
+        } finally {
+            submitBtn?.removeAttribute('disabled');
+            submitBtn?.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+    }
+
+    showQuizResults(results) {
+        // Hide quiz form
+        document.getElementById('quizForm').classList.add('hidden');
+        
+        const resultsDiv = document.getElementById('quizResults');
+        const icon = document.getElementById('resultsIcon');
+        const title = document.getElementById('resultsTitle');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const summary = document.getElementById('resultsSummary');
+        const actions = document.getElementById('resultsActions');
+        
+        if (results.passed) {
+            icon.textContent = '🎉';
+            title.textContent = 'Congratulations! You Passed!';
+            title.className = 'text-3xl font-bold mb-4 text-green-600';
+            scoreDisplay.textContent = Math.round(results.score) + '%';
+            scoreDisplay.className = 'text-6xl font-bold mb-6 text-green-500';
+            summary.innerHTML = `
+                You answered ${results.correct_answers} out of ${results.total_questions} questions correctly.<br>
+                Great job! You can now continue to claim your certificate.
+            `;
+            
+            actions.innerHTML = `
+                <button onclick="app.navigateToPage('home')" 
+                    class="bg-primary-500 hover:bg-primary-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                    <i class="fas fa-home mr-2"></i>Back to Home
+                </button>
+                <button onclick="app.showCertificateModal()" 
+                    class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                    <i class="fas fa-certificate mr-2"></i>Get Certificate
+                </button>
+            `;
+        } else {
+            icon.textContent = '😔';
+            title.textContent = 'You Need to Try Again';
+            title.className = 'text-3xl font-bold mb-4 text-red-600';
+            scoreDisplay.textContent = Math.round(results.score) + '%';
+            scoreDisplay.className = 'text-6xl font-bold mb-6 text-red-500';
+            summary.innerHTML = `
+                You answered ${results.correct_answers} out of ${results.total_questions} questions correctly.<br>
+                You need at least 70% to pass. Study more and try again!
+            `;
+            
+            actions.innerHTML = `
+                <button onclick="app.navigateToPage('references')" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                    <i class="fas fa-book mr-2"></i>Study References
+                </button>
+                <button onclick="app.retakeQuiz()" 
+                    class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-bold transition-colors">
+                    <i class="fas fa-redo mr-2"></i>Retake Quiz
+                </button>
+            `;
+        }
+        
+        // Show detailed results
+        this.showDetailedResults(results.results);
+        
+        resultsDiv.classList.remove('hidden');
+        
+        // Update progress
+        this.updateProgressDisplay();
+    }
+
+    showDetailedResults(results) {
+        const container = document.getElementById('detailedResults');
+        
+        container.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-list-alt mr-2 text-primary-500"></i>
+                    Detailed Results
+                </h3>
+                <div class="space-y-4">
+                    ${results.map(result => `
+                        <div class="p-4 rounded-lg border-l-4 ${result.is_correct ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-800 mb-2">${result.question}</p>
+                                    <div class="space-y-1 text-sm">
+                                        <p class="text-gray-600">Your answer: <span class="font-medium ${result.is_correct ? 'text-green-600' : 'text-red-600'}">${result.user_answer || 'Not answered'}</span></p>
+                                        <p class="text-gray-600">Correct answer: <span class="font-medium text-green-600">${result.correct_answer}</span></p>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <i class="fas ${result.is_correct ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    async retakeQuiz() {
+        document.getElementById('quizResults').classList.add('hidden');
+        document.getElementById('quizForm').classList.remove('hidden');
+        
+        // Clear previous answers
+        document.querySelectorAll('input[type="radio"]').forEach(input => {
+            input.checked = false;
+        });
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ===== JOURNEY METHODS =====
+    initializeJourney() {
+        // Show journey progress for logged in users
+        if (this.currentUser) {
+            document.getElementById('journeyProgress').classList.remove('hidden');
+            this.updateJourneyProgress();
+        }
+        
+        // Add click handlers for journey steps
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.journey-step')) {
+                const step = e.target.closest('.journey-step');
+                const stepType = step.dataset.step;
+                
+                if (!step.classList.contains('locked')) {
+                    this.navigateFromJourney(stepType);
+                }
+            }
+        });
+    }
+
+    navigateFromJourney(stepType) {
+        switch(stepType) {
+            case 'auth':
+                if (!this.currentUser) {
+                    this.navigateToPage('login');
+                }
+                break;
+            case 'overview':
+                this.navigateToPage('home');
+                document.getElementById('smartCityDescription')?.scrollIntoView({ behavior: 'smooth' });
+                break;
+            case 'pillars':
+                this.navigateToPage('home');
+                document.getElementById('pillarsGrid')?.scrollIntoView({ behavior: 'smooth' });
+                break;
+            case 'example':
+                // GANTI: Navigasi ke halaman baru, bukan modal
+                this.navigateToPage('indramayu-example');
+                this.setViewedExample();
+                break;
+            case 'references':
+                this.navigateToPage('references');
+                break;
+            case 'quiz':
+                this.navigateToPage('quiz');
+                break;
+            case 'certificate':
+                if (this.canClaimCertificate()) {
+                    this.showCertificateModal();
+                } else {
+                    this.showToast('Complete all steps first to claim certificate', 'warning');
+                }
+                break;
+        }
+    }
+
+    async updateJourneyProgress() {
+        if (!this.currentUser) return;
+        
+        try {
+            const progressData = await this.apiCall('/progress');
+            
+            const steps = ['auth', 'overview', 'pillars', 'example', 'references', 'quiz', 'certificate'];
+            let completedSteps = 0;
+            
+            // Step 1: Auth (always completed if logged in)
+            this.updateJourneyStep('auth', 'completed');
+            completedSteps++;
+            
+            // Step 2: Overview 
+            if (this.hasVisitedOverview()) {
+                this.updateJourneyStep('overview', 'completed');
+                completedSteps++;
+            } else {
+                this.updateJourneyStep('overview', 'active');
+            }
+            
+            // Step 3: Pillars (completed when user has read some references)
+            if (progressData.completed_count > 0) {
+                this.updateJourneyStep('pillars', 'completed');
+                completedSteps++;
+            } else if (completedSteps === 2) {
+                this.updateJourneyStep('pillars', 'active');
+            }
+            
+            // Step 4: Example
+            if (this.hasViewedExample()) {
+                this.updateJourneyStep('example', 'completed');
+                completedSteps++;
+            } else if (completedSteps === 3) {
+                this.updateJourneyStep('example', 'active');
+            }
+            
+            // Step 5: References 
+            if (this.hasVisitedReferences()) {
+                this.updateJourneyStep('references', 'completed');
+                completedSteps++;
+            } else if (completedSteps === 4) {
+                this.updateJourneyStep('references', 'active');
+            }
+            
+            // Step 6: Quiz (completed when passed)
+            if (progressData.quiz_score >= 70) {
+                this.updateJourneyStep('quiz', 'completed');
+                completedSteps++;
+            } else if (completedSteps === 5) {
+                this.updateJourneyStep('quiz', 'active');
+            } else {
+                // TAMBAH: Show quiz as locked until ready
+                this.updateJourneyStep('quiz', 'locked');
+            }
+            
+            // Step 7: Certificate (completed when all done)
+            if (progressData.percentage === 100) {
+                this.updateJourneyStep('certificate', 'completed');
+                completedSteps++;
+            } else if (completedSteps === 6) {
+                this.updateJourneyStep('certificate', 'active');
+            } else {
+                this.updateJourneyStep('certificate', 'locked');
+            }
+            
+            // Update progress line
+            const progressPercentage = (completedSteps / steps.length) * 100;
+            document.getElementById('journeyProgressLine').style.width = `${progressPercentage}%`;
+            
+            // TAMBAH: Update journey description based on current step
+            this.updateJourneyDescription(completedSteps, progressData);
+            
+        } catch (error) {
+            console.error('Journey progress update error:', error);
+        }
+    }
+
+    // TAMBAH method baru untuk deskripsi yang lebih baik
+    updateJourneyDescription(completedSteps, progressData) {
+        let description = '';
+        
+        if (completedSteps === 1) {
+            description = 'Pelajari konsep Smart City dan jelajahi 6 pilar utamanya';
+        } else if (completedSteps === 2) {
+            description = 'Baca referensi dari setiap pilar untuk memperdalam pemahaman';
+        } else if (completedSteps === 3) {
+            description = 'Lihat contoh implementasi Smart City di Kabupaten Indramayu';
+        } else if (completedSteps === 4) {
+            description = 'Jelajahi semua referensi akademik yang tersedia';
+        } else if (completedSteps === 5) {
+            if (progressData.completed_count < progressData.total_references) {
+                description = `Selesaikan membaca referensi (${progressData.completed_count}/${progressData.total_references}) lalu ikuti kuis`;
+            } else {
+                description = 'Ikuti kuis Smart City untuk menguji pemahaman Anda';
+            }
+        } else if (completedSteps === 6) {
+            description = 'Klaim sertifikat penyelesaian pembelajaran Smart City Anda!';
+        } else if (completedSteps === 7) {
+            description = 'Selamat! Anda telah menyelesaikan seluruh pembelajaran Smart City';
+        } else {
+            description = 'Lanjutkan perjalanan pembelajaran Smart City Anda langkah demi langkah';
+        }
+        
+        document.getElementById('journeyDescription').textContent = description;
+    }
+
+    updateJourneyStep(stepId, status) {
+        const stepElement = document.getElementById(`step-${stepId}`);
+        const stepContainer = document.querySelector(`[data-step="${stepId}"]`);
+        
+        if (stepElement && stepContainer) {
+            stepContainer.classList.remove('active', 'completed', 'locked');
+            
+            if (status === 'completed') {
+                stepContainer.classList.add('completed');
+                stepElement.innerHTML = '<i class="fas fa-check"></i>';
+            } else if (status === 'active') {
+                stepContainer.classList.add('active');
+            } else if (status === 'locked') {
+                stepContainer.classList.add('locked');
+            }
+        }
+    }
+
+    setCurrentJourneyStep(completedCount) {
+        const steps = ['auth', 'overview', 'pillars', 'example', 'references', 'quiz', 'certificate'];
+        
+        steps.forEach((step, index) => {
+            if (index < completedCount) {
+                this.updateJourneyStep(step, 'completed');
+            } else if (index === completedCount) {
+                this.updateJourneyStep(step, 'active');
+            } else {
+                this.updateJourneyStep(step, 'locked');
+            }
+        });
+    }
+
+    updateJourneyDescription(completedSteps) {
+        const descriptions = [
+            'Complete your Smart City learning journey step by step',
+            'Learn about Smart City concepts and explore the pillars',
+            'Read references from each pillar to deepen your understanding', 
+            'Check out implementation examples in Indramayu',
+            'Browse through all available academic references',
+            'Take the quiz to test your knowledge',
+            'Claim your certificate of completion!'
+        ];
+        
+        const description = descriptions[Math.min(completedSteps, descriptions.length - 1)];
+        document.getElementById('journeyDescription').textContent = description;
+    }
+
+    // Helper methods for journey tracking
+    hasVisitedOverview() {
+        return localStorage.getItem('visited_overview') === 'true';
+    }
+
+    setVisitedOverview() {
+        localStorage.setItem('visited_overview', 'true');
+    }
+
+    hasViewedExample() {
+        return localStorage.getItem('viewed_example') === 'true';
+    }
+
+    setViewedExample() {
+        localStorage.setItem('viewed_example', 'true');
+    }
+
+    hasVisitedReferences() {
+        return localStorage.getItem('visited_references') === 'true';
+    }
+
+    setVisitedReferences() {
+        localStorage.setItem('visited_references', 'true');
+    }
+
+    canClaimCertificate() {
+        if (!this.currentUser) return false;
+        
+        // Check if user has completed all requirements
+        return this.currentUser.quiz_score >= 70 && 
+            this.readReferences.size >= this.totalReferences;
+    }
+
+    showIndramayuExample() {
+        // Create modal for Indramayu examples
+        const modal = this.createModal('Indramayu Smart City Examples', `
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-blue-50 p-6 rounded-xl">
+                        <h4 class="font-bold text-blue-800 mb-3">🏛️ Smart Governance</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• Sistem pelayanan publik online</li>
+                            <li>• E-government untuk transparansi</li>
+                            <li>• Digital complaint system</li>
+                        </ul>
+                    </div>
+                    <div class="bg-green-50 p-6 rounded-xl">
+                        <h4 class="font-bold text-green-800 mb-3">💰 Smart Economy</h4>
+                        <ul class="text-sm text-green-700 space-y-1">
+                            <li>• Platform UMKM digital</li>
+                            <li>• E-commerce lokal</li>
+                            <li>• Digital payment systems</li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-6 rounded-xl">
+                        <h4 class="font-bold text-purple-800 mb-3">🏠 Smart Living</h4>
+                        <ul class="text-sm text-purple-700 space-y-1">
+                            <li>• Smart healthcare system</li>
+                            <li>• Digital education platform</li>
+                            <li>• Public safety monitoring</li>
+                        </ul>
+                    </div>
+                    <div class="bg-orange-50 p-6 rounded-xl">
+                        <h4 class="font-bold text-orange-800 mb-3">🌱 Smart Environment</h4>
+                        <ul class="text-sm text-orange-700 space-y-1">
+                            <li>• Air quality monitoring</li>
+                            <li>• Smart waste management</li>
+                            <li>• Water quality sensors</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        this.setViewedExample();
+        this.updateJourneyProgress();
+    }
+
+    createModal(title, content) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+                <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl" onclick="this.closest('.fixed').remove()">
+                    &times;
+                </button>
+                <div class="p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">${title}</h2>
+                    ${content}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        return modal;
+    }
     async loadInitialPage() {
         // Determine current page from URL
         const path = window.location.pathname;
@@ -112,20 +628,26 @@ class SmartCityApp {
             this.currentPillarSlug = path.split('/')[2];
         } else if (path === '/references') {
             this.currentPage = 'references';
+        } else if (path === '/quiz') {
+            this.currentPage = 'quiz';
+        } else if (path === '/indramayu-example') {
+            this.currentPage = 'indramayu-example';
         } else {
             this.currentPage = 'home';
         }
 
-        // Check if user needs to be authenticated
-        const protectedPages = ['home', 'pillar', 'references'];
-        if (protectedPages.includes(this.currentPage) && !this.currentUser) {
-            this.navigateToPage('login');
-            return;
+        // UBAH: Check authentication untuk protected pages SEBELUM render
+        const protectedPages = ['quiz', 'indramayu-example', 'home', 'pillar', 'references'];
+        if (protectedPages.includes(this.currentPage)) {
+            const isAuthenticated = await this.checkAuthStatus();
+            if (!isAuthenticated) {
+                window.location.href = '/login';
+                return;
+            }
         }
 
         await this.renderCurrentPage();
     }
-
     async renderCurrentPage() {
         this.showLoading();
         
@@ -133,12 +655,20 @@ class SmartCityApp {
             switch (this.currentPage) {
                 case 'home':
                     await this.renderHomePage();
+                    this.setVisitedOverview(); // TAMBAH INI
                     break;
                 case 'pillar':
                     await this.renderPillarPage();
                     break;
                 case 'references':
                     await this.renderReferencesPage();
+                    this.setVisitedReferences(); // TAMBAH INI
+                    break;
+                case 'quiz':  // TAMBAH CASE INI
+                    await this.renderQuizPage();
+                    break;
+                case 'indramayu-example':  // ✅ TAMBAH INI
+                    this.showIndramayuExample();
                     break;
                 case 'register':
                 case 'login':
@@ -146,6 +676,7 @@ class SmartCityApp {
                     break;
             }
             this.updateNavigation();
+            this.updateJourneyProgress(); // TAMBAH INI
         } catch (error) {
             this.showToast('An error occurred while loading the page', 'error');
             console.error('Render error:', error);
@@ -153,7 +684,6 @@ class SmartCityApp {
         
         this.hideLoading();
     }
-
     async navigateToPage(page, params = {}) {
         this.currentPage = page;
         Object.assign(this, params);
@@ -173,17 +703,23 @@ class SmartCityApp {
             case 'references':
                 newURL = '/references';
                 break;
+            case 'quiz':
+                newURL = '/quiz';
+                break;
+            case 'indramayu-example':
+                newURL = '/indramayu-example';
+                break;
         }
         
-        // Check authentication for protected pages
-        const protectedPages = ['home', 'pillar', 'references'];
+        // UBAH: Check authentication SEBELUM navigate
+        const protectedPages = ['home', 'pillar', 'references', 'quiz', 'indramayu-example'];
         if (protectedPages.includes(page) && !this.currentUser) {
             window.location.href = '/login';
             return;
         }
         
         // For server-rendered pages, redirect
-        if (['register', 'login', 'pillar', 'references', 'home'].includes(page)) {
+        if (['register', 'login', 'pillar', 'references', 'quiz', 'home', 'indramayu-example'].includes(page)) {
             window.location.href = newURL;
             return;
         }
@@ -479,7 +1015,7 @@ class SmartCityApp {
     }
 
     // Form Handling
-    async handleFormSubmit(e) {
+   async handleFormSubmit(e) {
         const form = e.target;
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
@@ -489,6 +1025,8 @@ class SmartCityApp {
                 await this.handleRegister(data);
             } else if (form.id === 'loginForm') {
                 await this.handleLogin(data);
+            } else if (form.id === 'quizAnswerForm') { // TAMBAH INI
+                await this.handleQuizSubmit(data);
             }
         } catch (error) {
             this.showToast(error.message || 'An error occurred', 'error');
@@ -662,26 +1200,45 @@ class SmartCityApp {
                 preview.innerHTML = `
                     <div class="certificate-preview bg-white p-12 border-4 border-primary-500 rounded-2xl text-center relative">
                         <div class="absolute top-4 right-4 text-4xl opacity-20">🏆</div>
+                        <div class="absolute top-4 left-4 text-4xl opacity-20">🎓</div>
+                        
                         <div class="text-3xl font-bold text-primary-600 mb-2">CERTIFICATE OF COMPLETION</div>
                         <div class="text-xl text-secondary-500 mb-8">Smart City Mini Library</div>
-                        <div class="text-gray-600 mb-4">Awarded to:</div>
+                        
+                        <div class="text-gray-600 mb-4">This certifies that</div>
                         <div class="text-2xl font-bold text-gray-800 mb-6 border-b-2 border-primary-500 inline-block pb-2">
                             ${certificateData.certificate_data.name}
                         </div>
-                        <div class="text-gray-700 leading-relaxed mb-8">
-                            Has successfully completed the learning program<br>
+                        
+                        <div class="text-gray-700 leading-relaxed mb-6">
+                            has successfully completed the comprehensive learning program<br>
                             <strong>6 Pillars of Smart City Indonesia</strong><br>
-                            by reading all academic references<br><br>
-                            <em>${certificateData.certificate_data.major} - ${certificateData.certificate_data.study_program}</em><br>
-                            <em>Student ID: ${certificateData.certificate_data.nim}</em>
+                            including all academic references and assessment<br>
                         </div>
-                        <div class="flex justify-between text-sm text-gray-600">
+                        
+                        <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <strong>References Read:</strong> ${certificateData.certificate_data.total_resources}
+                                </div>
+                                <div>
+                                    <strong>Quiz Score:</strong> ${certificateData.certificate_data.quiz_score}%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-gray-600 mb-4">
+                            <em>Faculty of ${certificateData.certificate_data.major} - ${certificateData.certificate_data.study_program} Study Program</em><br>
+                            <em>NIM: ${certificateData.certificate_data.nim}</em>
+                        </div>
+                        
+                        <div class="flex justify-between text-sm text-gray-600 mt-8">
                             <div>
-                                <div>Date:</div>
+                                <div><strong>Date:</strong></div>
                                 <div>${new Date().toLocaleDateString('en-US')}</div>
                             </div>
-                            <div>
-                                <div>Smart City Mini Library</div>
+                            <div class="text-right">
+                                <div><strong>Smart City Mini Library</strong></div>
                                 <div>Politeknik Negeri Indramayu</div>
                             </div>
                         </div>
@@ -691,7 +1248,7 @@ class SmartCityApp {
                 modal.classList.remove('hidden');
             }
         } catch (error) {
-            this.showToast('Failed to load certificate data', 'error');
+            this.showToast(error.message || 'Failed to load certificate data', 'error');
             console.error('Certificate error:', error);
         }
     }

@@ -13,7 +13,7 @@ class Visitor extends Authenticatable
     use HasApiTokens, Notifiable;
 
     protected $table = 'visitors';
-    protected $primaryKey = 'id'; // default, int
+    protected $primaryKey = 'id'; 
     public $incrementing = true;
     protected $keyType = 'int';
 
@@ -26,12 +26,16 @@ class Visitor extends Authenticatable
         'secret_code',
         'is_active',
         'progress',
+        'quiz_score',
+        'quiz_attempt',
         'certificate_url',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'progress' => 'integer',
+        'quiz_score' => 'double',
+        'quiz_attempt' => 'integer',
     ];
 
     protected $hidden = [
